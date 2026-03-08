@@ -7,8 +7,15 @@ const InAppViewer = ({ fileUrl, fileName, fileType, onClose }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [pdfUrl, setPdfUrl] = useState(null);
+    const [isMpesa, setIsMpesa] = useState(false);
 
     useEffect(() => {
+        // Detect if running inside M-PESA mini-app
+        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+        const isMpesaEnv = /M-PESA|Mpesa|Daraja/i.test(userAgent) || 
+                          (window.location.ancestorOrigins && window.location.ancestorOrigins.length > 0);
+        setIsMpesa(isMpesaEnv);
+
         if (fileUrl) {
             // For PDFs, we'll use an iframe with PDF.js or direct PDF viewing
             // For other file types, we'll show a download option
@@ -36,6 +43,10 @@ const InAppViewer = ({ fileUrl, fileName, fileType, onClose }) => {
     const isPdf = fileType?.toLowerCase() === 'pdf' || 
                   fileName?.toLowerCase().endsWith('.pdf') ||
                   fileUrl?.toLowerCase().includes('.pdf');
+
+    const isEpub = fileType?.toLowerCase() === 'epub' || 
+                   fileName?.toLowerCase().endsWith('.epub') ||
+                   fileUrl?.toLowerCase().includes('.epub');
 
     const isImage = fileType?.toLowerCase().includes('image') ||
                    fileName?.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/);
@@ -185,7 +196,7 @@ const InAppViewer = ({ fileUrl, fileName, fileType, onClose }) => {
 
             {/* Content */}
             <div style={{ flex: 1, overflow: 'hidden' }}>
-                {isPdf ? (
+                {isPdf && !isMpesa ? (
                     <iframe
                         src={`${pdfUrl}#toolbar=1&navpanes=1&scrollbar=1`}
                         style={{
@@ -196,6 +207,105 @@ const InAppViewer = ({ fileUrl, fileName, fileType, onClose }) => {
                         title={fileName || 'PDF Document'}
                         onError={() => setError('Failed to load PDF. The file may be corrupted or not accessible.')}
                     />
+                ) : isPdf && isMpesa ? (
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        height: '100%',
+                        padding: 24,
+                        textAlign: 'center',
+                        background: '#f8f9fa'
+                    }}>
+                        <div style={{ fontSize: 64, marginBottom: 24 }}>📄</div>
+                        <h3 style={{ ...commonStyles.textLightBold(20), marginBottom: 12 }}>Open in Mini-App</h3>
+                        <p style={{ ...commonStyles.textLightNormal(16), color: colors.grey, maxWidth: 320, marginBottom: 32, lineHeight: 1.6 }}>
+                            The M-PESA mini-app doesn't support viewing PDFs directly inside the app. Please click the button below to view the book.
+                        </p>
+                        <button
+                            onClick={handleDownload}
+                            style={{
+                                padding: '16px 32px',
+                                backgroundColor: colors.appPrimary,
+                                color: colors.white,
+                                border: 'none',
+                                borderRadius: 12,
+                                cursor: 'pointer',
+                                fontWeight: 'bold',
+                                fontSize: 16,
+                                width: '100%',
+                                maxWidth: 280,
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }}
+                        >
+                            Open Book
+                        </button>
+                        <button
+                            onClick={onClose}
+                            style={{
+                                marginTop: 16,
+                                padding: '12px 24px',
+                                backgroundColor: 'transparent',
+                                color: colors.grey,
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: 14
+                            }}
+                        >
+                            Back to Details
+                        </button>
+                    </div>
+                ) : isEpub ? (
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        height: '100%',
+                        padding: 20,
+                        textAlign: 'center',
+                        background: '#f8f9fa'
+                    }}>
+                        <div style={{ fontSize: 64, marginBottom: 20 }}>📚</div>
+                        <h3 style={{ ...commonStyles.textLightBold(20), marginBottom: 12 }}>ePub Reader Coming Soon</h3>
+                        <p style={{ ...commonStyles.textLightNormal(16), color: colors.grey, maxWidth: 300, marginBottom: 24, lineHeight: 1.5 }}>
+                            We are working on an integrated ePub reader. In the meantime, you can download the file to read it in your favorite ePub reader app.
+                        </p>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            <button
+                                onClick={handleDownload}
+                                style={{
+                                    padding: '12px 24px',
+                                    backgroundColor: colors.appPrimary,
+                                    color: colors.white,
+                                    border: 'none',
+                                    borderRadius: 10,
+                                    cursor: 'pointer',
+                                    fontWeight: 600,
+                                    fontSize: 15,
+                                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                                }}
+                            >
+                                Download ePub
+                            </button>
+                            <button
+                                onClick={onClose}
+                                style={{
+                                    padding: '12px 24px',
+                                    backgroundColor: colors.white,
+                                    color: colors.grey,
+                                    border: `1px solid ${colors.lightGrey}`,
+                                    borderRadius: 10,
+                                    cursor: 'pointer',
+                                    fontWeight: 500,
+                                    fontSize: 15
+                                }}
+                            >
+                                Not Now
+                            </button>
+                        </div>
+                    </div>
                 ) : isImage ? (
                     <div style={{
                         display: 'flex',

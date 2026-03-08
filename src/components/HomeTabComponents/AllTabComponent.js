@@ -28,6 +28,46 @@ const AllTabComponent = ({ homeData }) => {
     return '/favicon.ico';
   };
 
+  // Helper function to sort books by Swahili first
+  const sortBySwahiliFirst = (books) => {
+    if (!books || !Array.isArray(books)) return [];
+    
+    return [...books].sort((a, b) => {
+      const bookA = a.book || a;
+      const bookB = b.book || b;
+
+      // Swahili priority checks:
+      const SWAHILI_ID = 7;
+      
+      const getCategoryName = (item) => {
+        if (item.category_name) return item.category_name;
+        if (item.category && typeof item.category === 'object') return item.category.name || item.category.category_name || '';
+        return '';
+      };
+
+      const catA = getCategoryName(bookA);
+      const catB = getCategoryName(bookB);
+
+      const isASwahili = (bookA.language_id === SWAHILI_ID || bookA.language_id === SWAHILI_ID.toString() || bookA.language_id === 7 || bookA.language_id === '7') ||
+                         (catA === 'Kiswahili Books') ||
+                         (catA.toLowerCase().includes('swahili')) ||
+                         (catA.toLowerCase().includes('kiswahili')) ||
+                         (bookA.language?.name || bookA.language || '').toLowerCase().includes('swahili') ||
+                         (bookA.language?.name || bookA.language || '').toLowerCase().includes('kiswahili');
+                         
+      const isBSwahili = (bookB.language_id === SWAHILI_ID || bookB.language_id === SWAHILI_ID.toString() || bookB.language_id === 7 || bookB.language_id === '7') ||
+                         (catB === 'Kiswahili Books') ||
+                         (catB.toLowerCase().includes('swahili')) ||
+                         (catB.toLowerCase().includes('kiswahili')) ||
+                         (bookB.language?.name || bookB.language || '').toLowerCase().includes('swahili') ||
+                         (bookB.language?.name || bookB.language || '').toLowerCase().includes('kiswahili');
+      
+      if (isASwahili && !isBSwahili) return -1;
+      if (!isASwahili && isBSwahili) return 1;
+      return 0;
+    });
+  };
+
   // Ads Section
   const AdsSection = () => {
     const ad = (homeData.ads || [])[0];
@@ -89,7 +129,10 @@ const AllTabComponent = ({ homeData }) => {
     const allBooks = categories.flatMap(cat => cat.books || []);
     const validBooks = allBooks.filter(book => book && book.id);
     
-    if (!validBooks.length) {
+    // Sort Swahili books first
+    const sortedBooks = sortBySwahiliFirst(validBooks);
+    
+    if (!sortedBooks.length) {
       return (
         <div style={{ margin: '28px 0 0 0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -128,7 +171,7 @@ const AllTabComponent = ({ homeData }) => {
           scrollbarWidth: 'none',
           msOverflowStyle: 'none'
         }}>
-          {validBooks.map((book) => {
+          {sortedBooks.map((book) => {
             const authorName = getAuthorName(book.author, book.author_name);
             const safeBook = {
               id: book.id,
@@ -1007,8 +1050,25 @@ const AllTabComponent = ({ homeData }) => {
 
   // Top Books Section - from top_played_book
   const TopBooksSection = () => {
-    const topBooks = homeData.top_played_book || [];
-    if (!topBooks.length) return null;
+    const topBooksRaw = homeData.top_played_book || [];
+    if (!topBooksRaw.length) return null;
+    
+    // Debug: Log top books before sorting
+    console.log('--- TOP BOOKS BEFORE SORTING ---');
+    topBooksRaw.forEach((item, index) => {
+      const b = item.book || item;
+      console.log(`TopBook Raw [${index}]: "${b.title}" | Category: "${b.category_name}" | LangID: ${b.language_id}`);
+    });
+
+    // Sort Swahili books first
+    const topBooks = sortBySwahiliFirst(topBooksRaw);
+    
+    // Debug: Log top books after sorting
+    console.log('--- TOP BOOKS AFTER SORTING ---');
+    topBooks.forEach((item, index) => {
+      const b = item.book || item;
+      console.log(`TopBook Sorted [${index}]: "${b.title}" | Category: "${b.category_name}" | LangID: ${b.language_id}`);
+    });
     
     return (
       <div style={{ margin: '32px 0 0 0' }}>
@@ -1028,15 +1088,6 @@ const AllTabComponent = ({ homeData }) => {
             // Prepare book data for BookCard component
             const coverImageUrl = book.coverimage ? `${FILE_BASE_URL}${book.coverimage}` : (book.image ? `${FILE_BASE_URL}${book.image}` : '/logo192.png');
             const imageUrl = book.image ? `${FILE_BASE_URL}${book.image}` : book.image;
-            
-            console.log('TopBooks - Book data:', {
-              id: bookId,
-              title: book.title,
-              coverimage: book.coverimage,
-              image: book.image,
-              coverImageUrl: coverImageUrl,
-              imageUrl: imageUrl
-            });
             
             const bookData = {
               id: bookId,

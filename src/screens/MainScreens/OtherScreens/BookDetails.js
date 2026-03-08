@@ -33,6 +33,7 @@ const BookDetails = () => {
             setLoading(true);
             setError(null);
             const data = await apiFunctions.getBookDetailsById(id, token);
+            console.log('Book Details API Response:', data); // Debugging API response
             if (data) {
                 setBook(data);
             } else {
@@ -78,17 +79,51 @@ const BookDetails = () => {
     };
 
     const handleOpenBook = () => {
-        if (book?.bookfile) {
-            const fileUrl = FILE_BASE_URL + book.bookfile;
+        // Log the book object to see all properties
+        console.log('Book data for reading:', book);
+        
+        // Try to find the file URL in common properties
+        // The API log shows 'bookfile' exists in the keys
+        let fileUrl = book.bookfile || book.file || book.url || book.ebook || book.magazine_file || book.book_file;
+        
+        // Check for any nested file objects if it's not a string
+        if (!fileUrl && book.file_details) {
+            fileUrl = book.file_details.url || book.file_details.file;
+        }
+
+        // If the key exists but is empty/null, try to find ANY value that ends with .pdf or .epub
+        if (!fileUrl) {
+            // Find all string properties
+            const entries = Object.entries(book);
+            const fileEntry = entries.find(([key, value]) => 
+                typeof value === 'string' && 
+                (value.toLowerCase().includes('.pdf') || value.toLowerCase().includes('.epub'))
+            );
+            
+            if (fileEntry) {
+                console.log(`Found possible file in key: ${fileEntry[0]} = ${fileEntry[1]}`);
+                fileUrl = fileEntry[1];
+            }
+        }
+
+        if (fileUrl) {
+            const fullUrl = fileUrl.startsWith('http') ? fileUrl : (FILE_BASE_URL + fileUrl);
             const fileName = book.title || 'Book';
-            const fileType = book.file_type || book.type || 'pdf';
+            // Determine type from file_type, type property, or extension
+            const fileType = book.file_type || book.type || (fullUrl.toLowerCase().includes('.epub') ? 'epub' : 'pdf');
+            
+            console.log('Opening book with:', { fullUrl, fileName, fileType });
             
             setViewerFile({
-                url: fileUrl,
+                url: fullUrl,
                 name: fileName,
                 type: fileType
             });
             setShowInAppViewer(true);
+        } else {
+            console.error('Available keys in book object:', Object.keys(book));
+            // Show details about what was checked to help debugging
+            alert(`No reading file found for "${book.title}".\n\nChecked fields: bookfile, file, url, ebook, magazine_file.\n\nPlease ensure a PDF or ePub is uploaded for this book in the admin panel.`);
         }
     };
 
@@ -328,7 +363,7 @@ const BookDetails = () => {
                                     Listen
                                 </button>
                             )}
-                            {book.bookfile && (
+                            {(book.bookfile || book.file_type === 'epub' || book.file_type === 'pdf' || book.file || book.url || book.ebook || book.magazine_file) && (
                                 <button
                                     onClick={handleOpenBook}
                                     style={{

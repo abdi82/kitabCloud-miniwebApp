@@ -169,6 +169,29 @@ const BookCard = ({ book }) => {
                         }}>🎧</span>
                     </div>
                 )}
+
+                {/* Book icon to indicate reading availability */}
+                {(book.bookfile || book.file_type === 'epub' || book.file_type === 'pdf') && (
+                    <div style={{
+                        position: 'absolute',
+                        top: 52,
+                        left: 10,
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        borderRadius: '50%',
+                        width: 32,
+                        height: 32,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backdropFilter: 'blur(4px)'
+                    }}>
+                        <span style={{ 
+                            fontSize: 18,
+                            color: 'white',
+                            lineHeight: 1
+                        }}>📖</span>
+                    </div>
+                )}
                 
                 {/* Hidden data for playlist context */}
                 {book.audio_url || book.bookaudio ? (
