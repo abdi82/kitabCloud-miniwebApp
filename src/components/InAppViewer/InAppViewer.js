@@ -12,8 +12,7 @@ const InAppViewer = ({ fileUrl, fileName, fileType, onClose }) => {
     useEffect(() => {
         // Detect if running inside M-PESA mini-app
         const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-        const isMpesaEnv = /M-PESA|Mpesa|Daraja/i.test(userAgent) || 
-                          (window.location.ancestorOrigins && window.location.ancestorOrigins.length > 0);
+        const isMpesaEnv = /M-PESA|Mpesa|Daraja/i.test(userAgent);
         setIsMpesa(isMpesaEnv);
 
         if (fileUrl) {
@@ -42,7 +41,9 @@ const InAppViewer = ({ fileUrl, fileName, fileType, onClose }) => {
 
     const isPdf = fileType?.toLowerCase() === 'pdf' || 
                   fileName?.toLowerCase().endsWith('.pdf') ||
-                  fileUrl?.toLowerCase().includes('.pdf');
+                  fileUrl?.toLowerCase().includes('.pdf') ||
+                  fileType?.toLowerCase().includes('pdf') ||
+                  fileUrl?.toLowerCase().includes('magazine');
 
     const isEpub = fileType?.toLowerCase() === 'epub' || 
                    fileName?.toLowerCase().endsWith('.epub') ||
