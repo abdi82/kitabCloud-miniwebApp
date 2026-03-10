@@ -5,6 +5,8 @@ import { commonStyles } from '../../constants/commonStyles';
 const InAppViewer = ({ fileUrl, fileName, fileType, onClose }) => {
     console.log('fileUrl', fileUrl); // this conatin the real url of the file
     const [loading, setLoading] = useState(true);
+    const [iframeLoading, setIframeLoading] = useState(true);
+    const [progress, setProgress] = useState(0);
     const [error, setError] = useState(null);
     const [pdfUrl, setPdfUrl] = useState(null);
     const [isMpesa, setIsMpesa] = useState(false);
@@ -20,6 +22,22 @@ const InAppViewer = ({ fileUrl, fileName, fileType, onClose }) => {
             // For other file types, we'll show a download option
             setPdfUrl(fileUrl);
             setLoading(false);
+            // If it's Mpesa, we don't need iframe loading since we show a button
+            if (isMpesaEnv) {
+                setIframeLoading(false);
+            } else {
+                // Simulate progress while iframe loads
+                let interval = setInterval(() => {
+                    setProgress(prev => {
+                        if (prev >= 90) {
+                            clearInterval(interval);
+                            return 90;
+                        }
+                        return prev + 5;
+                    });
+                }, 500);
+                return () => clearInterval(interval);
+            }
         }
     }, [fileUrl]);
 
@@ -196,19 +214,77 @@ const InAppViewer = ({ fileUrl, fileName, fileType, onClose }) => {
             </div>
 
             {/* Content */}
-            <div style={{ flex: 1, overflow: 'hidden' }}>
-                {isPdf && !isMpesa ? (
-                    <iframe
-                        src={`${pdfUrl}#toolbar=1&navpanes=1&scrollbar=1`}
-                        style={{
-                            width: '100%',
-                            height: '100%',
-                            border: 'none'
-                        }}
-                        title={fileName || 'PDF Document'}
-                        onError={() => setError('Failed to load PDF. The file may be corrupted or not accessible.')}
-                    />
-                ) : isPdf && isMpesa ? (
+            <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+                {isPdf && !isMpesa && (
+                    <>
+                        {iframeLoading && (
+                            <div style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                height: 4,
+                                background: colors.lightGrey,
+                                zIndex: 10
+                            }}>
+                                <div style={{
+                                    width: `${progress}%`,
+                                    height: '100%',
+                                    background: colors.appPrimary,
+                                    transition: 'width 0.3s ease-out'
+                                }}></div>
+                            </div>
+                        )}
+                        {iframeLoading && (
+                            <div style={{
+                                position: 'absolute',
+                                top: 4,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: '#f8f9fa',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1
+                            }}>
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{
+                                        width: 40,
+                                        height: 40,
+                                        border: `3px solid ${colors.lightGrey}`,
+                                        borderTop: `3px solid ${colors.appPrimary}`,
+                                        borderRadius: '50%',
+                                        animation: 'spin 1s linear infinite',
+                                        margin: '0 auto 16px'
+                                    }}></div>
+                                    <p style={{ ...commonStyles.textLightNormal(14), color: colors.grey }}>
+                                        Loading magazine... {progress}%
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                        <iframe
+                            src={`${pdfUrl}#toolbar=1&navpanes=1&scrollbar=1`}
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                border: 'none'
+                            }}
+                            title={fileName || 'PDF Document'}
+                            onLoad={() => {
+                                setProgress(100);
+                                setTimeout(() => setIframeLoading(false), 300);
+                            }}
+                            onError={() => {
+                                setIframeLoading(false);
+                                setError('Failed to load PDF. The file may be corrupted or not accessible.');
+                            }}
+                        />
+                    </>
+                )}
+                
+                {isPdf && isMpesa ? (
                     <div style={{
                         display: 'flex',
                         flexDirection: 'column',
