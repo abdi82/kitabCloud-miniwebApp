@@ -161,6 +161,10 @@ const ErrorToast = ({ message, isVisible, onClose }) => {
 
 const ForgotPassword = () => {
     const [email, setEmail] = useState('');
+    // Step 1: email → a 6-digit code is emailed. Step 2: code + new password.
+    const [step, setStep] = useState('email');
+    const [code, setCode] = useState('');
+    const [newPassword, setNewPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
     const [showError, setShowError] = useState(false);
@@ -169,29 +173,44 @@ const ForgotPassword = () => {
 
     const navigate = useNavigate();
 
-    const onResetPassword = async () => {
-        if (!email.trim()) {
-            setErrorMessage('Please enter your email address');
-            setShowError(true);
-            return;
-        }
+    const fail = (message) => {
+        setIsLoading(false);
+        setErrorMessage(message || 'Something went wrong. Please try again.');
+        setShowError(true);
+    };
 
+    const onSendCode = async () => {
+        if (!email.trim()) return fail('Please enter your email address');
         try {
             setIsLoading(true);
-            await apiFunctions.forgotPassword({ email });
+            const res = await apiFunctions.forgotPassword({ email: email.trim() });
             setIsLoading(false);
-            
-            setSuccessMessage('Password reset instructions have been sent to your email');
+            if (!res || !res.status) return fail(res && res.message);
+            setShowError(false);
+            setSuccessMessage('We sent a 6-digit code to your email (check Spam too).');
             setShowSuccess(true);
-            
-            // Redirect to login after 3 seconds
-            setTimeout(() => {
-                navigate('/login');
-            }, 3000);
+            setStep('code');
         } catch (err) {
+            fail(err && err.response && err.response.data && err.response.data.message);
+        }
+    };
+
+    const onResetPassword = async () => {
+        if (code.replace(/\D/g, '').length !== 6) return fail('Enter the 6-digit code from the email');
+        if (newPassword.length < 6) return fail('The new password must be at least 6 characters');
+        try {
+            setIsLoading(true);
+            const res = await apiFunctions.resetPassword({
+                email: email.trim(), otp: code.trim(), password: newPassword, password_confirmation: newPassword,
+            });
             setIsLoading(false);
-            setErrorMessage('Something went wrong. Please try again.');
-            setShowError(true);
+            if (!res || !res.status) return fail(res && res.message);
+            setShowError(false);
+            setSuccessMessage('Your password has been changed. You can now log in.');
+            setShowSuccess(true);
+            setTimeout(() => navigate('/login'), 2500);
+        } catch (err) {
+            fail(err && err.response && err.response.data && err.response.data.message);
         }
     };
 
@@ -256,20 +275,42 @@ const ForgotPassword = () => {
                             textAlign: 'center',
                             maxWidth: 400
                         })}>
-                            Enter your email address to reset your password
+                            {step === 'email'
+                                ? 'Enter your email address. We will send you a 6-digit code.'
+                                : 'Enter the code from the email and choose a new password.'}
                         </p>
 
                         <div style={{ width: '100%', maxWidth: 400 }}>
-                            <PrimaryTextInput 
-                                placeholder='Email' 
-                                value={email} 
-                                onChangeText={setEmail}
-                            />
+                            {step === 'email' ? (
+                                <PrimaryTextInput 
+                                    placeholder='Email' 
+                                    value={email} 
+                                    onChangeText={setEmail}
+                                    autoComplete='email'
+                                />
+                            ) : (
+                                <>
+                                    <PrimaryTextInput 
+                                        placeholder='6-digit code' 
+                                        value={code} 
+                                        onChangeText={(v) => setCode(v.replace(/\D/g, '').slice(0, 6))}
+                                        inputMode='numeric'
+                                        autoComplete='one-time-code'
+                                    />
+                                    <PrimaryTextInput 
+                                        placeholder='New password (at least 6)' 
+                                        value={newPassword} 
+                                        onChangeText={setNewPassword}
+                                        secureEntry={true}
+                                        autoComplete='new-password'
+                                    />
+                                </>
+                            )}
                             
                             <CommonButton 
                                 isLoading={isLoading} 
-                                buttonTitle='Reset Password' 
-                                onPress={onResetPassword} 
+                                buttonTitle={step === 'email' ? 'Send code' : 'Save new password'} 
+                                onPress={step === 'email' ? onSendCode : onResetPassword} 
                                 customStyles={{ 
                                     width: '100%', 
                                     marginBottom: 20 

@@ -508,6 +508,10 @@ export const apiFunctions = {
         const res = await axios.post(BASE_URL + 'forgot', reqObj);
         return res.data;
     },
+    resetPassword: async (reqObj) => {
+        const res = await axios.post(BASE_URL + 'reset-password', reqObj);
+        return res.data;
+    },
     getAudiobooks: async (token) => {
         try {
             const res = await axios.get(BASE_URL + 'audio', {
