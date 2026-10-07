@@ -6,6 +6,23 @@ const BASE_URL = 'https://admin.kitabcloud.se/api/'
 //Staging URL
 // const BASE_URL = 'http://13.49.228.164/api/'
 
+// One person per account: when the account is signed in on another device the API answers
+// 401 + logged_in_elsewhere. Clear the session here and tell the user why.
+let signedOutShown = false;
+axios.interceptors.response.use(
+    (res) => res,
+    (error) => {
+        const data = error && error.response && error.response.data;
+        if (error && error.response && error.response.status === 401 && data && data.logged_in_elsewhere && !signedOutShown) {
+            signedOutShown = true;
+            localStorage.removeItem('token');
+            window.alert(data.message || 'Your account was signed in on another device. A KitabCloud account is for one person.');
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
+);
+
 export const apiFunctions = {
     createFormData: (reqObj) => {
         let formData = new FormData()
