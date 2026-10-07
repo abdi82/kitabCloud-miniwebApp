@@ -85,6 +85,45 @@ export const AudioPlayerProvider = ({ children }) => {
         };
     }, [volume, handleLoadedMetadata, handleTimeUpdate, handleEnded, handleError, audio]);
 
+    // One stream at a time (like Spotify): playing here takes over from the account's other
+    // device; if another device takes over, this one pauses with a message.
+    useEffect(() => {
+        let beat = null;
+        const send = (action) => {
+            const token = localStorage.getItem('token');
+            if (!token) return Promise.resolve(null);
+            return fetch('https://admin.kitabcloud.se/api/playback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ action }),
+            }).then((r) => r.json()).catch(() => null);
+        };
+        const onPlay = () => {
+            send('start');
+            clearInterval(beat);
+            beat = setInterval(async () => {
+                const res = await send('beat');
+                if (res && res.playing_elsewhere) {
+                    audio.pause();
+                    window.alert(res.message || 'KitabCloud is playing on another device. An account can play on one device at a time.');
+                }
+            }, 30000);
+        };
+        const onStop = () => {
+            clearInterval(beat);
+            send('stop');
+        };
+        audio.addEventListener('play', onPlay);
+        audio.addEventListener('pause', onStop);
+        audio.addEventListener('ended', onStop);
+        return () => {
+            clearInterval(beat);
+            audio.removeEventListener('play', onPlay);
+            audio.removeEventListener('pause', onStop);
+            audio.removeEventListener('ended', onStop);
+        };
+    }, [audio]);
+
     // Shuffle playlist utility - unused
     // const shuffleArray = (array) => {
     //     const shuffled = [...array];
