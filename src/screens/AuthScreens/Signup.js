@@ -280,7 +280,9 @@ const Signup = () => {
                     navigate('/language-selection');
                 }
             } else {
-                setErrorMessage(response.data?.message || 'Signup failed');
+                // The API sends validation errors as `error` (e.g. "This email is already registered…").
+                const apiError = response.data?.message || response.data?.error;
+                setErrorMessage(typeof apiError === 'string' ? apiError : 'Signup failed');
                 setShowError(true);
             }
         } catch (err) {
